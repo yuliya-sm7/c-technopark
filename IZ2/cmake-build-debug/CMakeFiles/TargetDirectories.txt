@@ -1,0 +1,3 @@
+C:/Users/User/Desktop/c-technopark/IZ2/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/User/Desktop/c-technopark/IZ2/cmake-build-debug/CMakeFiles/IZ2.dir
+C:/Users/User/Desktop/c-technopark/IZ2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
