@@ -19,15 +19,55 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int LEN_BUFF = 64;
+const int MUL_REBUFF = 2;
 
-char **check_correct(char *const *const input_lines, size_t n_lines, size_t *n_out) {
-    if (input_lines == NULL) return NULL;
+char **input_strings(size_t *n_lines);
+
+char *get_string();
+
+int rebuff(char *buff[], size_t *n_buff);
+
+char **check_correct_bracket(char *const *const input_lines, size_t n_lines, size_t *n_out);
+
+void free_input_strings(char **input_str, size_t n_lines);
+
+int main() {
+    size_t n_lines = 0;
+    char **input_str = input_strings(&n_lines);
+    if (input_str == NULL) {
+        printf("[error]");
+        return 0;
+    }
+
+    size_t n_out = 0;
+    char **correct_str = check_correct_bracket(input_str, n_lines, &n_out);
+    if (correct_str == NULL) {
+        free_input_strings(input_str, n_lines);
+        printf("[error]");
+        return 0;
+    }
+
+    for (size_t i = 0; i < n_out; i++) {
+        printf("%s\n", correct_str[i]);
+    }
+
+    free_input_strings(input_str, n_lines);
+    free(correct_str);
+    return 0;
+}
+
+char **check_correct_bracket(char *const *const input_lines, size_t n_lines, size_t *n_out) {
+    if (input_lines == NULL || n_out == NULL)
+        return NULL;
     char **correct_lines = calloc(n_lines, sizeof(char *));
-    if (correct_lines == NULL) return NULL;
+    if (correct_lines == NULL)
+        return NULL;
 
     size_t n_correct = 0;
     for (size_t i = 0; i < n_lines; i++) {
-        if (!input_lines[i]) continue;  // если указатель ошибочный
+        if (!input_lines[i])
+            continue;  // если указатель ошибочный
         int bracket_count = 0;
 
         for (size_t j = 0; j < strlen(input_lines[i]) && bracket_count >= 0; j++) {
@@ -48,36 +88,65 @@ char **check_correct(char *const *const input_lines, size_t n_lines, size_t *n_o
 }
 
 
-char* get_string() {
+char *get_string() {
     char ch = '\0';
     size_t n = 0;
-    size_t n_buff = 64;
-    char *str = calloc(n_buff, sizeof(char));
-    if (str == NULL) return NULL;
-    while (scanf("%c", &ch) == 1 && ch != '\n') {
+    size_t n_buff = 0;
+    char *str = NULL;
+    if (rebuff(&str, &n_buff) < 0)
+        return NULL;
+
+    while (scanf("%c", &ch) == 1 && ch != '\n' && ch != EOF) {
         str[n] = ch;
         ++n;
         if (n >= n_buff) {
-            n_buff *= 2;
-            char *new_ptr = realloc(str, n_buff * sizeof(char));
-            if (new_ptr) str = new_ptr;
-            else break;
+            if (rebuff(&str, &n_buff) < 0)
+                break;
         }
         str[n] = '\0';
     }
     return str;
 }
 
+int rebuff(char *buff[], size_t *n_buff) {
+    if (n_buff == NULL)
+        return -1;
+    if (*n_buff == 0) {
+        *n_buff = LEN_BUFF;
+        *buff = calloc(*n_buff, sizeof(char));
+    } else {
+        if (buff == NULL || *buff == NULL)
+            return -1;
+        *n_buff *= MUL_REBUFF;
+        char *new_ptr = realloc(*buff, *n_buff * sizeof(char));
+        if (new_ptr) {
+            *buff = new_ptr;
+        } else {
+            return -1;  // false
+        }
+    }
+    return 0;  // true
+}
+
 char **input_strings(size_t *n_lines) {
+    if (n_lines == NULL)
+        return NULL;
     char **strings = malloc(sizeof(char *));
-    if (strings == NULL || n_lines == NULL) return NULL;
+    if (strings == NULL)
+        return NULL;
     size_t n = 0;
+    size_t n_buff = 1;
     char *str = get_string();
 
     while (str != NULL && strlen(str) > 0) {
-        char **new_ptr = realloc(strings, (n + 1) * sizeof(char *));
-        if (new_ptr) strings = new_ptr;
-        else break;
+        if(n >= n_buff) {
+            n_buff *= MUL_REBUFF;
+            char **new_ptr = realloc(strings, n_buff * sizeof(char *));
+            if (new_ptr)
+                strings = new_ptr;
+            else
+                break;
+        }
         strings[n] = str;
         ++n;
         str = get_string();  // считываем новую строку
@@ -89,33 +158,10 @@ char **input_strings(size_t *n_lines) {
 
 
 void free_input_strings(char **input_str, size_t n_lines) {
-    if (!input_str) return;
+    if (!input_str)
+        return;
     for (size_t i = 0; i < n_lines; i++) {
         free(input_str[i]);
     }
     free(input_str);
-}
-
-int main() {
-    size_t n_lines = 0;
-    char **input_str = input_strings(&n_lines);
-    if (input_str == NULL) {
-        printf("[error]");
-        return 0;
-    }
-    // проверка на соответствие количества открытых и закрытых скобок
-    size_t n_out = 0;
-    char **correct_str = check_correct(input_str, n_lines, &n_out);
-    if (correct_str == NULL){
-        printf("[error]");
-        return 0;
-    }
-    // вывод корректных строк
-    for (size_t i = 0; i < n_out; i++) {
-        printf("%s\n", correct_str[i]);
-    }
-
-    free_input_strings(input_str, n_lines);
-    free(correct_str);  // очистка только массива указателей
-    return 0;
 }
