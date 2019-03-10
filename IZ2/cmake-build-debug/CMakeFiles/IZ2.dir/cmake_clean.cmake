@@ -1,9 +1,7 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/IZ2.dir/main.c.obj"
+  "CMakeFiles/IZ2.dir/main.c.o"
   "IZ2.pdb"
-  "IZ2.exe"
-  "IZ2.exe.manifest"
-  "libIZ2.dll.a"
+  "IZ2"
 )
 
 # Per-language clean rules from dependency scanning.
