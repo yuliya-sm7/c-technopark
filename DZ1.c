@@ -26,7 +26,7 @@ char **input_strings(size_t *n_lines);
 
 char *get_string();
 
-int rebuff(char *buff[], size_t *n_buff);
+int rebuff(void **buff, size_t *n_buff);
 
 char **check_correct_bracket(char *const *const input_lines, size_t n_lines, size_t *n_out);
 
@@ -93,14 +93,14 @@ char *get_string() {
     size_t n = 0;
     size_t n_buff = 0;
     char *str = NULL;
-    if (rebuff(&str, &n_buff) < 0)
+    if (rebuff((void **) &str, &n_buff) < 0)
         return NULL;
 
     while (scanf("%c", &ch) == 1 && ch != '\n' && ch != EOF) {
         str[n] = ch;
         ++n;
         if (n >= n_buff) {
-            if (rebuff(&str, &n_buff) < 0)
+            if (rebuff((void **) &str, &n_buff) < 0)
                 break;
         }
         str[n] = '\0';
@@ -108,7 +108,7 @@ char *get_string() {
     return str;
 }
 
-int rebuff(char *buff[], size_t *n_buff) {
+int rebuff(void **buff, size_t *n_buff) {
     if (n_buff == NULL)
         return -1;
     if (*n_buff == 0) {
@@ -118,7 +118,7 @@ int rebuff(char *buff[], size_t *n_buff) {
         if (buff == NULL || *buff == NULL)
             return -1;
         *n_buff *= MUL_REBUFF;
-        char *new_ptr = realloc(*buff, *n_buff * sizeof(char));
+        void *new_ptr = realloc(*buff, *n_buff * sizeof(char));
         if (new_ptr) {
             *buff = new_ptr;
         } else {
@@ -131,20 +131,14 @@ int rebuff(char *buff[], size_t *n_buff) {
 char **input_strings(size_t *n_lines) {
     if (n_lines == NULL)
         return NULL;
-    char **strings = malloc(sizeof(char *));
-    if (strings == NULL)
-        return NULL;
+    char **strings = NULL;
     size_t n = 0;
-    size_t n_buff = 1;
+    size_t n_buff = 0;
     char *str = get_string();
 
     while (str != NULL && strlen(str) > 0) {
-        if(n >= n_buff) {
-            n_buff *= MUL_REBUFF;
-            char **new_ptr = realloc(strings, n_buff * sizeof(char *));
-            if (new_ptr)
-                strings = new_ptr;
-            else
+        if (n >= n_buff) {
+            if (rebuff((void **) &strings, &n_buff) < 0)
                 break;
         }
         strings[n] = str;
