@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/yu/Рабочий стол/c-technopark/IZ2/main.c
+stdio.h
+-
+stdlib.h
+-
+ctype.h
+-
+stdbool.h
+-
+string.h
+-
+unistd.h
+-
+
