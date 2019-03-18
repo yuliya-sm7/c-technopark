@@ -8,23 +8,53 @@
 const int LEN_BUFF = 64;
 const int MUL_REBUFF = 2;
 
+/* Недостек *////////////////////////////////////////////////////////////////////////////////
 typedef struct Stack {
-    char **buff;
-    ssize_t top;
+    char **buff;  // массив строк (операторы и операнды)
+    ssize_t top;  // индекс текущего последнего элемента
 } Stack;
 
 bool is_empty(const Stack *stack) {
     return stack->top < 0;
 }
 
+bool add(Stack *stack, char symbol[]) {
+    if (stack == NULL)
+        return false;
+    char *str = calloc(strlen(symbol) + 1, sizeof(char));
+    if (str == NULL)
+        return false;
+    memcpy(str, symbol, strlen(symbol) + 1);
+    ++(stack->top);
+    (*stack).buff[stack->top] = str;
+    return true;
+}
+
+char *pop(Stack *stack) {
+    if (is_empty(stack))
+        return NULL;
+    return stack->buff[(stack->top)--];
+}
+
 size_t size(const Stack *stack) {
     return (size_t) (stack->top + 1);
 }
 
+void stack_free(Stack *stack) {
+    if (stack == NULL)
+        return;
+    for (int i = 0; i < size(stack); ++i) {
+        if (stack->buff[i] != NULL)
+            free(stack->buff[i]);
+    }
+    if (stack->buff != NULL)
+        free(stack->buff);
+}
+/* Недостек *////////////////////////////////////////////////////////////////////////////////
 
 char *get_string();
 
-int rebuff(void **buff, size_t *n_buff);
+bool rebuff(void **buff, size_t *n_buff);
 
 bool data_processing(const char line[], float *p_result);
 
@@ -36,6 +66,8 @@ bool is_sign(char symbol);
 
 bool is_bracket(char ch, ssize_t *count);
 
+bool priority(char ch_new, char ch_stack);
+
 char *delete_space(const char line[]);
 
 bool convert_to_polish_notation(const char line[], Stack *stack);
@@ -46,28 +78,6 @@ bool calculate_polish_notation(Stack *stack, float *result);
 
 bool arithmetic(ssize_t top, float operands[], char element);
 
-void add(Stack *stack, char symbol[]) {
-    if (stack == NULL)
-        return;
-    char *str = calloc(strlen(symbol) + 1, sizeof(char));
-    memcpy(str, symbol, strlen(symbol) + 1);
-    ++(stack->top);
-    (*stack).buff[stack->top] = str;
-}
-
-char *pop(Stack *stack) {
-    if (is_empty(stack))
-        return NULL;
-    return stack->buff[(stack->top)--];
-}
-
-
-void stack_free(Stack *stack) {
-    for (int i = 0; i < size(stack); ++i) {
-        free(stack->buff[i]);
-    }
-    free(stack->buff);
-}
 
 int main() {
 
@@ -92,14 +102,14 @@ char *get_string() {
     size_t n = 0;
     size_t n_buff = 0;
     char *str = NULL;
-    if (rebuff((void **) &str, &n_buff) < 0)
+    if (rebuff((void **) &str, &n_buff) == false)
         return NULL;
 
     while (scanf("%c", &ch) == 1 && ch != '\n' && ch != EOF) {
         str[n] = ch;
         ++n;
         if (n >= n_buff) {
-            if (rebuff((void **) &str, &n_buff) < 0)
+            if (rebuff((void **) &str, &n_buff) == false)
                 break;
         }
         str[n] = '\0';
@@ -108,24 +118,26 @@ char *get_string() {
 }
 
 
-int rebuff(void **buff, size_t *n_buff) {
+bool rebuff(void **buff, size_t *n_buff) {
     if (n_buff == NULL)
-        return -1;
+        return false;
     if (*n_buff == 0) {
         *n_buff = LEN_BUFF;
         *buff = calloc(*n_buff, sizeof(char));
+        if (*buff == NULL)
+            return false;
     } else {
         if (buff == NULL || *buff == NULL)
-            return -1;
+            return false;
         *n_buff *= MUL_REBUFF;
         void *new_ptr = realloc(*buff, *n_buff * sizeof(char));
         if (new_ptr) {
             *buff = new_ptr;
         } else {
-            return -1;  // false
+            return false;
         }
     }
-    return 0;  // true
+    return true;
 }
 
 
@@ -141,8 +153,12 @@ bool data_processing(const char line[], float *p_result) {
     }
 
     Stack stack;
-    stack.buff = calloc(100, sizeof(char *));
+    stack.buff = calloc(strlen(line), sizeof(char *)); // колличество операторов и операндов точно не больше
     stack.top = -1;
+    if (stack.buff == NULL) {
+        free(clean_line);
+        return false;
+    }
     convert_to_polish_notation(clean_line, &stack);
     free(clean_line);
 
@@ -163,7 +179,7 @@ bool is_correct_line(const char line[]) {
     ssize_t bracket_count = 0;
 
     for (size_t j = 0; j < strlen(line) && is_correct; j++) {
-        if (!isdigit(line[j]) && !is_sign(line[j]) && !is_bracket(line[j], &bracket_count))
+        if (!isdigit(line[j]) && !is_sign(line[j]) && line[j] != '.' && !is_bracket(line[j], &bracket_count))
             is_correct = false;
         if (bracket_count < 0)
             is_correct = false;
@@ -176,7 +192,7 @@ bool is_correct_line(const char line[]) {
 
 // проверяет, относится ли символ к допустимым в арифметических операциях (+, -, * итд)
 bool is_sign(char symbol) {
-    if (symbol >= 42 && symbol <= 47) {
+    if (symbol == '+' || symbol == '-' || symbol == '/' || symbol == '*') {
         return true;
     }
     return false;
@@ -193,6 +209,13 @@ bool is_bracket(char ch, ssize_t *count) {
     return true;
 }
 
+bool priority(char ch_new, char ch_stack) {
+    if ((ch_new == '*' || ch_new == '/') && (ch_stack == '+' || ch_stack == '-'))
+        return false;
+    if (ch_stack == '(')
+        return false;
+    return true;
+}
 
 // удаление всех пробелов из входной последовательности
 char *delete_space(const char line[]) {
@@ -209,13 +232,14 @@ char *delete_space(const char line[]) {
     return result;
 }
 
-// перевод входной последовательности выражения (очищенной от пробелов) в запись в обратной польской нотации
 bool convert_to_polish_notation(const char line[], Stack *out) {
-    if (line == NULL) {
+    if (line == NULL || out == NULL) {
         return false;
     }
     Stack tmp;
-    tmp.buff = calloc(10, sizeof(char *));
+    tmp.buff = calloc(strlen(line) - 1, sizeof(char *));
+    if (tmp.buff == NULL)
+        return false;
     tmp.top = -1;
 
     for (size_t i_line = 0; i_line < strlen(line); ++i_line) {
@@ -231,42 +255,49 @@ bool convert_to_polish_notation(const char line[], Stack *out) {
             char *ch = pop(&tmp);
             while (ch != NULL && *ch != '(') {
                 add(out, ch);
+                free(ch);
                 ch = pop(&tmp);
             }
             free(ch);
         } else if (is_sign(symbol)) {
             if (symbol == '-' && (i_line == 0 || (i_line > 0 && !isdigit(line[i_line - 1])))) {
-                add(out, "0\0");
+                add(out, "0\0");  // ставим 0 перед унарным минусом
             }
-            while (!is_empty(&tmp) && *tmp.buff[tmp.top] != '(') {
-                add(out, pop(&tmp));
+            while (!is_empty(&tmp) && priority(symbol, *tmp.buff[tmp.top])) {
+                char *ch = pop(&tmp);
+                add(out, ch);
+                free(ch);
             }
-            char operator[2];
-            operator[0] = symbol;
-            operator[1] = '\0';
+            char operator[2] = {symbol, '\0'};
             add(&tmp, operator);
         }
+
     }
     while (!is_empty(&tmp)) {
-        add(out, pop(&tmp));
+        char *ch = pop(&tmp);
+        add(out, ch);
+        free(ch);
     }
     stack_free(&tmp);
     return true;
 }
 
 
-// преобразует строку в число с плавающей точкой
-char *readNum(const char line[], size_t *i) {
-    char *buff = calloc(32, sizeof(char));
+char *readNum(const char line[], size_t *begin) {
+    if (line == NULL || begin == NULL)
+        return NULL;
+    char *buff = calloc(LEN_BUFF, sizeof(char));
+    if (buff == NULL)
+        return NULL;
     size_t n = 0;
-    size_t j = *i;
-    while ((isdigit(line[j]) || line[j] == '.') && n < 31) {
+    size_t j = *begin;
+    while ((isdigit(line[j]) || line[j] == '.') && n < LEN_BUFF - 1) {
         buff[n] = line[j];
         j++;
         n++;
     }
     buff[n] = '\0';
-    *i = j - 1;
+    *begin = j - 1;
     return buff;
 }
 
@@ -274,24 +305,25 @@ char *readNum(const char line[], size_t *i) {
 bool calculate_polish_notation(Stack *stack, float *result) {
     if (stack == NULL || result == NULL)
         return false;
-    float *operands = calloc(size(stack), sizeof(float));
+    float *operands = calloc(size(stack) - 1, sizeof(float));
     if (operands == NULL)
         return false;
-    ssize_t stack_top = -1;
-
+    ssize_t top = -1;
     bool is_correct = true;
-    for (size_t i = 0; i < size(stack) && is_correct; i++) {
+
+    for (size_t i = 0; i < size(stack) && is_correct; ++i) {
         char *sym = stack->buff[i];
         if (is_sign(*sym)) {
-            is_correct = arithmetic(stack_top, operands, *sym);
-            --stack_top;
+            is_correct = arithmetic(top, operands, *sym);
+            --top;
         } else {
-            ++stack_top;
-            operands[stack_top] = atof(sym);
+            ++top;
+            operands[top] = atof(sym);
         }
     }
+
     if (is_correct) {
-        *result = operands[stack_top];
+        *result = operands[top];
     }
     free(operands);
     return is_correct;
@@ -299,26 +331,26 @@ bool calculate_polish_notation(Stack *stack, float *result) {
 
 bool arithmetic(ssize_t top, float operands[], char element) {
     bool is_correct = true;
-    if (top < 0 || operands == NULL) {
+    if (top < 1 || operands == NULL) {
         is_correct = false;
-        return is_correct;
-    }
-    switch (element) {
-        case '+':
-            operands[top - 1] += operands[top];
-            break;
-        case '*':
-            operands[top - 1] *= operands[top];
-            break;
-        case '/':
-            operands[top - 1] /= operands[top];
-            break;
-        case '-':
-            operands[top - 1] -= operands[top];
-            break;
-        default:
-            is_correct = false;
-            break;
+    } else {
+        switch (element) {
+            case '+':
+                operands[top - 1] += operands[top];
+                break;
+            case '*':
+                operands[top - 1] *= operands[top];
+                break;
+            case '/':
+                operands[top - 1] /= operands[top];
+                break;
+            case '-':
+                operands[top - 1] -= operands[top];
+                break;
+            default:
+                is_correct = false;
+                break;
+        }
     }
     return is_correct;
 }
