@@ -54,7 +54,7 @@ void stack_free(Stack *stack) {
 
 char *get_string();
 
-bool rebuff(void **buff, size_t *n_buff);
+size_t rebuff(void **buff, size_t n_buff, size_t type_size);
 
 bool data_processing(const char line[], float *p_result);
 
@@ -100,44 +100,43 @@ int main() {
 char *get_string() {
     char ch = '\0';
     size_t n = 0;
-    size_t n_buff = 0;
     char *str = NULL;
-    if (rebuff((void **) &str, &n_buff) == false)
+    size_t n_buff = rebuff((void **) &str, 0, sizeof(char));
+    if (n_buff < 1)
         return NULL;
 
-    while (scanf("%c", &ch) == 1 && ch != '\n' && ch != EOF) {
+    while (scanf("%c", &ch) == 1 && ch != '\n' && ch != '\0' && ch != EOF) {
         str[n] = ch;
         ++n;
         if (n >= n_buff) {
-            if (rebuff((void **) &str, &n_buff) == false)
+            n_buff = rebuff((void **) &str, n_buff, sizeof(char));
+            if (n_buff < 1)
                 break;
         }
-        str[n] = '\0';
     }
+    str[n] = '\0';
     return str;
 }
 
 
-bool rebuff(void **buff, size_t *n_buff) {
-    if (n_buff == NULL)
-        return false;
-    if (*n_buff == 0) {
-        *n_buff = LEN_BUFF;
-        *buff = calloc(*n_buff, sizeof(char));
+size_t rebuff(void **buff, size_t n_buff, size_t type_size) {
+    if (n_buff == 0) {
+        n_buff = LEN_BUFF;
+        *buff = calloc(n_buff, type_size);
         if (*buff == NULL)
-            return false;
+            return 0;
     } else {
         if (buff == NULL || *buff == NULL)
-            return false;
-        *n_buff *= MUL_REBUFF;
-        void *new_ptr = realloc(*buff, *n_buff * sizeof(char));
+            return 0;
+        n_buff *= MUL_REBUFF;
+        void *new_ptr = realloc(*buff, n_buff * type_size);
         if (new_ptr) {
             *buff = new_ptr;
         } else {
-            return false;
+            return 0;
         }
     }
-    return true;
+    return n_buff;
 }
 
 
@@ -211,7 +210,7 @@ bool is_bracket(char ch, ssize_t *count) {
 
 bool priority(char ch_new, char ch_stack) {
     if ((ch_new == '*' || ch_new == '/') && (ch_stack == '+' || ch_stack == '-'))
-        return false;
+        return false;  // если в стеке приоритет ниже, чем у добавляемого элемента
     if (ch_stack == '(')
         return false;
     return true;
@@ -243,8 +242,8 @@ bool convert_to_polish_notation(const char line[], Stack *out) {
     tmp.top = -1;
 
     for (size_t i_line = 0; i_line < strlen(line); ++i_line) {
-
         char symbol = line[i_line];
+
         if (isdigit(symbol)) {
             char *operand = readNum(line, &i_line);
             add(out, operand);
@@ -259,6 +258,7 @@ bool convert_to_polish_notation(const char line[], Stack *out) {
                 ch = pop(&tmp);
             }
             free(ch);
+
         } else if (is_sign(symbol)) {
             if (symbol == '-' && (i_line == 0 || (i_line > 0 && !isdigit(line[i_line - 1])))) {
                 add(out, "0\0");  // ставим 0 перед унарным минусом

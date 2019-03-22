@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/yu/Рабочий стол/c-technopark/IZ2/main.c
+C:/Users/User/Desktop/c-technopark/IZ2/main.c
 stdio.h
 -
 stdlib.h
